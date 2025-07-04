@@ -1,0 +1,15 @@
+### Return Time Windows Based on Product Type
+
+ReturnMind Inc. offers a flexible return policy tailored to different product categories. Below is a breakdown of our return windows:
+
+- **Electronics**: 30 days from the delivery date. Includes laptops, tablets, phones, and accessories. Must be unopened or in like-new condition.
+- **Apparel & Footwear**: 45 days. Items must be unworn, unwashed, and with all tags intact.
+- **Home & Kitchen Appliances**: 15 days. Items must not have been installed or used.
+- **Books & Stationery**: 10 days. No markings, highlights, or damaged spines.
+- **Perishables & Personal Care Items**: Not eligible for return due to hygiene and safety concerns.
+- **Furniture**: 15 days. Items must be in original packaging; opened mattresses are not returnable unless defective.
+
+Holiday Season Policy:
+For orders placed between Nov 15 – Dec 31, we offer extended returns up to Jan 31 of the following year. This applies to gift purchases and seasonal sales.
+
+Always check your product page for specific return terms. Some limited edition or clearance items may have different rules.
