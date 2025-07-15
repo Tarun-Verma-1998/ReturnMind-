@@ -24,7 +24,7 @@ def get_sentences(text):
     return [sent.text.strip() for sent in doc.sents]
 
 # Chunking function using sliding window over sentences
-def chunk_document(doc_name, text, word_limit=400, overlap=2):
+def chunk_document(doc_name, text, word_limit=400, overlap=3):
     sentences = get_sentences(clean_text(text))
     chunks = []
     chunk_id = 0
