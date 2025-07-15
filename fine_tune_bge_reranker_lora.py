@@ -16,9 +16,13 @@ MODEL_NAME = "BAAI/bge-reranker-base"
 CSV_PATH = "bge_reranker_training_data.csv"
 MAX_LEN = 512
 BATCH_SIZE = 8
-EPOCHS = 3
+EPOCHS = 5
 LR = 2e-5
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+
+PATIENCE = 2
+MIN_DELTA = 0.001
+BEST_MODEL_DIR = "bge_reranker_lora_sigmoid_best"
 
 # ---------- Dataset Class ----------
 class RerankerDataset(Dataset):
@@ -40,44 +44,38 @@ class RerankerDataset(Dataset):
             max_length=self.max_len,
             return_tensors="pt"
         )
-
-
-        
         input_ids = inputs["input_ids"].squeeze()
         attention_mask = inputs["attention_mask"].squeeze()
-        score = torch.tensor(float(row["score"]), dtype=torch.float)
+        score = torch.tensor(float(row["score"]) / 5.0, dtype=torch.float)  # normalize between 0 and 1
         return input_ids, attention_mask, score
 
 # ---------- Load & Split Data ----------
 df = pd.read_csv(CSV_PATH)
-
 train_df, val_df = train_test_split(df, test_size=0.2, random_state=42)
 
-# Save splits for inspection (optional)
 train_df.to_csv("bge_reranker_train.csv", index=False)
 val_df.to_csv("bge_reranker_val.csv", index=False)
 
 # ---------- Tokenizer ----------
 tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
-
 train_dataset = RerankerDataset(train_df, tokenizer, MAX_LEN)
 val_dataset = RerankerDataset(val_df, tokenizer, MAX_LEN)
-
 train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
 val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE)
 
-# ---------- Model with Regression Head ----------
+# ---------- Model with Sigmoid Activation ----------
 class RerankerRegressor(nn.Module):
     def __init__(self, model_name):
         super().__init__()
         self.base = AutoModel.from_pretrained(model_name)
         self.regression = nn.Linear(self.base.config.hidden_size, 1)
+        self.activation = nn.Sigmoid()  # squash between 0 and 1
 
     def forward(self, input_ids, attention_mask):
         outputs = self.base(input_ids=input_ids, attention_mask=attention_mask)
-        cls_embedding = outputs.last_hidden_state[:, 0, :]  # CLS token
+        cls_embedding = outputs.last_hidden_state[:, 0, :]
         score = self.regression(cls_embedding)
-        return score.squeeze()
+        return self.activation(score).squeeze()
 
 # ---------- Initialize Model and LoRA ----------
 model = RerankerRegressor(MODEL_NAME)
@@ -96,8 +94,10 @@ model.to(DEVICE)
 optimizer = AdamW(model.parameters(), lr=LR)
 loss_fn = nn.MSELoss()
 
-# ---------- Training Loop ----------
-model.train()
+# ---------- Training with Early Stopping ----------
+best_val_mse = float("inf")
+epochs_no_improve = 0
+
 for epoch in range(EPOCHS):
     total_train_loss = 0
     model.train()
@@ -129,9 +129,24 @@ for epoch in range(EPOCHS):
     val_mse = mean_squared_error(val_labels, val_preds)
     print(f"Epoch {epoch+1}: Train Loss = {total_train_loss:.4f}, Val MSE = {val_mse:.4f}")
 
-# ---------- Save Model ----------
-os.makedirs("bge_reranker_lora_finetuned", exist_ok=True)
-model.base.save_pretrained("bge_reranker_lora_finetuned")
-tokenizer.save_pretrained("bge_reranker_lora_finetuned")
+    # ---------- Early Stopping Check ----------
+    if best_val_mse - val_mse > MIN_DELTA:
+        best_val_mse = val_mse
+        epochs_no_improve = 0
+        # Save best model
+        os.makedirs(BEST_MODEL_DIR, exist_ok=True)
+        model.base.save_pretrained(BEST_MODEL_DIR)
+        tokenizer.save_pretrained(BEST_MODEL_DIR)
+        print(f" New best model saved (Val MSE = {val_mse:.4f})")
+    else:
+        epochs_no_improve += 1
+        print(f" No improvement for {epochs_no_improve} epoch(s)")
 
-print("Fine-tuning complete. Model saved to 'bge_reranker_lora_finetuned/'")
+    if epochs_no_improve >= PATIENCE:
+        print("Early stopping triggered")
+        break
+
+print(f"Training complete. Best Val MSE: {best_val_mse:.4f}")
+
+
+

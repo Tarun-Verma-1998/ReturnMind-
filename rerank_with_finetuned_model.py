@@ -9,11 +9,17 @@ from torch import nn
 MILVUS_HOST = "localhost"
 MILVUS_PORT = "19530"
 COLLECTION_NAME = "chunk_embeddings"
-TOP_K = 5
+TOP_K = 30
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-QUERY = "How do I return an item if it's damaged?"
-E5_MODEL = "intfloat/e5-base-v2"
-BGE_MODEL_DIR = "bge_reranker_lora_finetuned"
+# QUERY = "How do I return an item if it's damaged?"
+# QUERY = "What are the return windows for electronics and furniture items?"
+# QUERY = "Can I return a used home appliance?"
+# QUERY = "can i return on holidays ?"
+# QUERY = "Can I return items bought during holidays?"
+# QUERY = "whats about to return engraved product?"
+QUERY = "Can I return customized or engraved items?"
+E5_MODEL = "BAAI/bge-base-en-v1.5"
+BGE_MODEL_DIR = "bge_reranker_lora_sigmoid_best"
 
 # ----- CONNECT TO MILVUS -----
 connections.connect(host=MILVUS_HOST, port=MILVUS_PORT)
@@ -51,19 +57,24 @@ for hit in results[0]:
     })
 
 df_retrieved = pd.DataFrame(retrieved)
+print("\nDEBUG: Retrieved Document Names + Chunk IDs:")
+for row in df_retrieved.itertuples():
+    print(f"- {row.doc_name}, Chunk ID: {row.chunk_id}")
+
 
 # ----- Load Fine-tuned BGE-Reranker + LoRA -----
 class RerankerRegressor(nn.Module):
-    def __init__(self, model_dir):
+    def __init__(self, model_name):
         super().__init__()
-        self.base = AutoModel.from_pretrained(model_dir)
+        self.base = AutoModel.from_pretrained(model_name)
         self.regression = nn.Linear(self.base.config.hidden_size, 1)
+        self.activation = nn.Sigmoid()  # <- this line is crucial
 
     def forward(self, input_ids, attention_mask):
-        output = self.base(input_ids=input_ids, attention_mask=attention_mask)
-        cls_embedding = output.last_hidden_state[:, 0, :]
+        outputs = self.base(input_ids=input_ids, attention_mask=attention_mask)
+        cls_embedding = outputs.last_hidden_state[:, 0, :]
         score = self.regression(cls_embedding)
-        return score.squeeze()
+        return self.activation(score).squeeze()  # <- squash between 0 and 1
 
 tokenizer = AutoTokenizer.from_pretrained(BGE_MODEL_DIR)
 model = RerankerRegressor(BGE_MODEL_DIR).to(DEVICE)

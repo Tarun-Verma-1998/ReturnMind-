@@ -1,6 +1,7 @@
 from pymilvus import connections, FieldSchema, CollectionSchema, DataType, Collection, utility
 import pandas as pd
 import numpy as np
+from sklearn.preprocessing import normalize
 
 # ----------------------------------------
 # 1. Connect to Milvus
@@ -32,23 +33,26 @@ if utility.has_collection(collection_name):
 collection = Collection(name=collection_name, schema=schema)
 
 # ----------------------------------------
-# 5. Prepare and insert data
+# 5. Normalize embeddings and prepare data
 # ----------------------------------------
+raw_embeddings = np.stack(df["embedding"].values)
+normalized_embeddings = normalize(raw_embeddings, norm="l2")  # L2 normalization for cosine similarity
+
 data_to_insert = [
     df["chunk_id"].tolist(),
     df["doc_name"].tolist(),
     df["chunk_text"].tolist(),
-    np.stack(df["embedding"].values)
+    normalized_embeddings
 ]
-collection.insert(data_to_insert)
 
 # ----------------------------------------
-# 6. Flush to persist data
+# 6. Insert and flush
 # ----------------------------------------
+collection.insert(data_to_insert)
 collection.flush()
 
 # ----------------------------------------
-# 7. Create HNSW index on embedding
+# 7. Create HNSW index on embedding field
 # ----------------------------------------
 index_params = {
     "index_type": "HNSW",
@@ -65,4 +69,4 @@ collection.create_index(field_name="embedding", index_params=index_params)
 # ----------------------------------------
 collection.load()
 
-print(" Embeddings successfully inserted and indexed in Milvus.")
+print("Embeddings successfully normalized, inserted, and indexed in Milvus.")

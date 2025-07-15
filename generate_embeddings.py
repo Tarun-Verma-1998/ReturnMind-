@@ -11,7 +11,7 @@ df = pd.read_csv("chunked_documents.csv")  # Ensure this file is in your project
 # -----------------------------
 # Load E5-base-v2 model + tokenizer
 # -----------------------------
-model_name = "intfloat/e5-base-v2"
+model_name = "BAAI/bge-base-en-v1.5"
 tokenizer = AutoTokenizer.from_pretrained(model_name)
 model = AutoModel.from_pretrained(model_name)
 model.eval()
