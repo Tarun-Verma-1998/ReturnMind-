@@ -17,9 +17,11 @@ DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 # QUERY = "can i return on holidays ?"
 # QUERY = "Can I return items bought during holidays?"
 # QUERY = "whats about to return engraved product?"
-QUERY = "Can I return customized or engraved items?"
+# QUERY = "Can I return customized or engraved items?" ------------------------------------------------------ Good one
+QUERY = "Can I return items bought during holiday sales?"
 E5_MODEL = "BAAI/bge-base-en-v1.5"
 BGE_MODEL_DIR = "bge_reranker_lora_sigmoid_best"
+
 
 # ----- CONNECT TO MILVUS -----
 connections.connect(host=MILVUS_HOST, port=MILVUS_PORT)
