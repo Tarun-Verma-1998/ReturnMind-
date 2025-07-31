@@ -1,10 +1,10 @@
-# 🧠 ReturnMind: AI-Powered Return Policy Assistant
+# ReturnMind: AI-Powered Return Policy Assistant
 
 > A modular, production-grade Retrieval-Augmented Generation (RAG) pipeline using Milvus, LoRA-finetuned reranker, and Mistral-7B to answer real-world customer return queries.
 
 ---
 
-## 📌 What is ReturnMind?
+## What is ReturnMind?
 
 **ReturnMind** is a custom-built RAG assistant that can answer customer questions from a company’s internal **return policy documents**. It mimics how a customer support agent would search through policy documents and provide a precise, policy-aligned answer.
 
@@ -16,7 +16,7 @@ It includes:
 
 ---
 
-## 🧠 Architecture (High-Level Flow)
+## Architecture (High-Level Flow)
 
 ```text
 +------------------+          +---------------------+        +-----------------------+
@@ -42,7 +42,7 @@ It includes:
 
 ---
 
-## 🔍 Core Agents and Intelligence Modules
+##  Core Agents and Intelligence Modules
 
 The pipeline is structured around three intelligent agents that mimic how a human support rep would read, assess, and respond to a customer's query.
 
@@ -54,7 +54,7 @@ The pipeline is structured around three intelligent agents that mimic how a huma
 
 ---
 
-## 🚀 Run Instructions
+## Run Instructions
 
 ```bash
 # 1. Chunk documents
@@ -75,22 +75,22 @@ python main.py
 
 ---
 
-## 🔎 Sample Output
+##  Sample Output
 
 ```bash
 Query: Can I return customized or engraved items?
 
-📊 Top Reranked Chunks:
+ Top Reranked Chunks:
 Chunk ID: 4 | Cosine: 0.82 | Rerank: 0.91
 Preview: Customized or engraved items may not be eligible for return unless...
 
-💬 Final Answer:
+ Final Answer:
 Customized or engraved items can only be returned if damaged or incorrect. Otherwise, they are final sale.
 ```
 
 ---
 
-## 💡 Key Highlights
+##  Key Highlights
 
 - 🔹 **BGE (E5-style) Embeddings** → high-quality semantic retrieval
 - 🔹 **Milvus Vector DB** → real-time similarity search
@@ -98,27 +98,18 @@ Customized or engraved items can only be returned if damaged or incorrect. Other
 - 🔹 **Mistral-7B** → compact open-weight model for fast inference
 - 🔹 **Modular Design** → each step can be replaced/swapped
 
----
-
-## 🔄 Future Enhancements
-
-- ✅ Add FastAPI wrapper for interactive querying
-- ✅ Add answer confidence + explainability
-- 🔲 Model versioning with MLflow
-- 🔲 Streamlit or LangChain UI
-- 🔲 Add evaluation set for NDCG / rerank lift
 
 ---
 
-## 👤 Author
+##  Author
 
 **Tarun Verma**\
 ML Engineer | MLOps | LLM Architectures\
-[LinkedIn](https://linkedin.com/in/your-profile)
+[LinkedIn](https://www.linkedin.com/in/tarunml)
 
 ---
 
-## 📄 License
+##  License
 
 MIT License. Use freely with credit.
 
