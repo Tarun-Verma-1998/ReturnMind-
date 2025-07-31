@@ -1,6 +1,6 @@
 # ReturnMind: AI-Powered Return Policy Assistant
 
-> A modular, production-grade Retrieval-Augmented Generation (RAG) pipeline using Milvus, LoRA-finetuned reranker, and Mistral-7B to answer real-world customer return queries.
+> A modular, production-grade Retrieval-Augmented Generation (RAG) pipeline using Milvus, LoRA-finetuned BGE reranker, and Mistral-7B to answer real-world customer return queries.
 
 ---
 
