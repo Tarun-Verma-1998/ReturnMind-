@@ -35,7 +35,7 @@ Context:
 {context}
 
 Question: {query}
-Answer concisely and helpfully. [/INST]
+Answer using 1–2 short sentences. Be concise but cover all important conditions from the most relevant passage. [/INST]
 """
 
     # --------- STEP 3: Load Mistral model ---------
@@ -85,7 +85,7 @@ Answer concisely and helpfully. [/INST]
 
 
 
-
+#Answer concisely and helpfully. [/INST]
 
 
 

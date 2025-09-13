@@ -1,0 +1,10 @@
+{
+  "model_name": "BAAI/bge-reranker-base",
+  "max_len": 512,
+  "head": {
+    "in_features": 768,
+    "out_features": 1,
+    "activation": "Sigmoid",
+    "target_scale": "0..1 (multiply by 5 at inference if you want 0..5)"
+  }
+}

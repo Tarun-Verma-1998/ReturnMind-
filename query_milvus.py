@@ -31,6 +31,10 @@ def search_top_k(query, k=5):
 if __name__ == "__main__":
     user_query = "How do I return an item if it's damaged?"
     top_hits = search_top_k(user_query, k=5)
+    print(" ")
+    print("QUERY: " ,user_query)
+    print(" ")
+    print("Top retrieved chunks from MILVUS are: ")
 
     for i, hit in enumerate(top_hits, 1):
         print(f"\nRank #{i}")

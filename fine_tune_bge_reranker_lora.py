@@ -8,6 +8,11 @@ from torch.optim import AdamW
 
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error
+
+# EV For evaluation (spearman and ndcg score)
+from scipy.stats import spearmanr
+from sklearn.metrics import ndcg_score
+
 from tqdm import tqdm
 import os
 
@@ -126,8 +131,27 @@ for epoch in range(EPOCHS):
             val_preds.extend(outputs.cpu().numpy())
             val_labels.extend(labels.cpu().numpy())
 
-    val_mse = mean_squared_error(val_labels, val_preds)
-    print(f"Epoch {epoch+1}: Train Loss = {total_train_loss:.4f}, Val MSE = {val_mse:.4f}")
+    # val_mse = mean_squared_error(val_labels, val_preds)
+    # print(f"Epoch {epoch+1}: Train Loss = {total_train_loss:.4f}, Val MSE = {val_mse:.4f}")
+
+    # EV Evaluation Metrics (Updated)
+
+        # --- Compute MSE ---
+    val_mse = mean_squared_error(val_labels, val_preds) 
+
+    # --- Compute Spearman Correlation ---
+    spearman_corr, _ = spearmanr(val_labels, val_preds)
+
+    # --- Compute nDCG@3 ---
+    # sklearn expects a 2D array: shape (n_queries, n_chunks_per_query)
+    # But we only have one flat list, so we wrap them as single row
+    true_relevance = [val_labels]
+    predicted_scores = [val_preds]
+    ndcg_3 = ndcg_score(true_relevance, predicted_scores, k=3)
+
+    # --- Print All ---
+    print(f"Epoch {epoch+1}: Train Loss = {total_train_loss:.4f}, Val MSE = {val_mse:.4f}, Spearman = {spearman_corr:.4f}, nDCG@3 = {ndcg_3:.4f}")
+
 
     # ---------- Early Stopping Check ----------
     if best_val_mse - val_mse > MIN_DELTA:

@@ -26,8 +26,8 @@
   "revision": null,
   "target_modules": [
     "query",
-    "key",
-    "value"
+    "value",
+    "key"
   ],
   "task_type": "FEATURE_EXTRACTION",
   "trainable_token_indices": null,
