@@ -1,133 +1,204 @@
-#  ReturnMind – Multi-Agent RAG System for Return Policy Q&A  
+# **ReturnMind — Multi-Agent RAG System for E-Commerce Return Policies**
 
-**ReturnMind** is a modular **multi-agent Retrieval-Augmented Generation (RAG)** system built to answer customer questions about return policies.  
-It combines **dense retrieval**, **fine-tuned reranking**, and **LLM-based answer generation** in a **multi-agent architecture** – making it **scalable, explainable, and production-ready**.  
-
----
-
-## Features  
-
-- **Multi-Agent Pipeline** →  
-  - `RetrievalAgent` → fetches candidate chunks from Milvus  
-  - `RerankerAgent` → scores chunks using a fine-tuned cross-encoder (BGE + LoRA regression head)  
-  - `AnswererAgent` → generates grounded answers using Mistral-7B or Phi-3-Mini  
-  - `MainAgent` → orchestrates the entire flow with feedback logging  
-- **Document Chunking** → Splits policies into overlapping, sentence-aware chunks (spaCy).  
-- **Dense Retrieval** → Embeddings generated with **BGE-base-en v1.5**, stored in **Milvus** (HNSW, cosine similarity).  
-- **Fine-Tuned Reranker** → Custom **LoRA-adapted BGE Reranker** trained with regression head (scores ∈ [0,5]) for improved chunk ranking.  
-- **Answer Generation** → Uses **Mistral-7B-Instruct** (or Phi-3-Mini) to produce concise, policy-grounded answers.  
-- **Feedback Loop** → Interactive 1–5 rating stored in `feedback_log.csv` for future reinforcement learning.  
-
-
-##  Project Structure  
-
-ReturnMind/
-│── BaseDocs/                      # Raw policy documents (.txt)
-│── chunk_creation.py               # Splits docs into 300–400 word chunks
-│── generate_embeddings.py          # Generates normalized embeddings (BGE)
-│── ingest_to_milvus.py             # Inserts embeddings into Milvus w/ HNSW index
-│── fine_tune_bge_reranker_lora.py  # Fine-tunes reranker with LoRA + regression
-│── rerank_with_finetuned_model.py  # Reranks retrieved chunks
-│── answer_generation.py            # Generates answers (Mistral-7B / Phi-3)
-│── Agents/
-│    ├── retrieval_agent.py
-│    ├── reranker_agent.py
-│    ├── reranker_agent_finetuned.py
-│    ├── answerer_agent.py
-│    └── main_agent.py              # Orchestrator Agent
-│── main.py                         # Simple end-to-end runner w/ feedback
-│── feedback_log.csv                # User ratings log
-
-
-##  Pipeline Overview  
-
-```mermaid
-flowchart LR
-    A[ Documents] -->|Chunking| B[Chunks CSV]
-    B -->|Embeddings| C[Milvus Vector DB]
-    Q[ User Query] --> D[RetrievalAgent]
-    D --> E[RerankerAgent (Fine-tuned BGE)]
-    E --> F[AnswererAgent (Mistral/Phi-3)]
-    F --> G[Final Answer]
-    G --> H[Feedback Log]
-
-
-##  Setup & Installation  
-
-1. **Clone repo**  
-   bash
-   git clone https://github.com/<your-username>/ReturnMind.git
-   cd ReturnMind
-
-
-2. **Install dependencies**  
-   bash
-   pip install -r requirements.txt
-   python -m spacy download en_core_web_sm
-   
-
-3. **Start Milvus (standalone)**  
-   bash
-   ./standalone.bat   # or docker compose up
-
-4. **Prepare data**  
-   bash
-   python chunk_creation.py
-   python generate_embeddings.py
-   python ingest_to_milvus.py
-   
-
-5. **Run pipeline**  
-   bash
-   python main_agent.py --query "Can I return engraved items?" --top_k 3
-   
-
-
-## Fine-Tuned Reranker  
-
-We fine-tune **BAAI/bge-reranker-base** with **LoRA** adapters and a regression head on a `(query, chunk, score)` dataset.  
-- Loss → **MSE**  
-- Eval → **MSE, Spearman correlation, nDCG@3**  
-- Scores normalized to **[0,1] → mapped to [0,5]**  
-
-This significantly improves ranking quality compared to vanilla cosine retrieval.
+> **A production-ready Retrieval-Augmented Generation (RAG) pipeline that answers customer queries about return/refund policies — powered by fine-tuned reranking and multi-agent orchestration.**
 
 ---
 
-## Example Run  
+##  Overview
+
+**ReturnMind** is an **LLM-powered multi-agent system** that retrieves, reranks, and generates grounded answers to user questions about company return policies.
+
+The system mirrors **real-world search and recommendation pipelines**, integrating:
+
+- **Dense retrieval** (Milvus + BGE embeddings)
+- **Fine-tuned reranking** (BGE-Reranker with LoRA regression head)
+- **Answer generation** (Mistral-7B-Instruct or Phi-3-Mini)
+- **Feedback logging** for continual improvement
+- **Agent-based modular design** for scalability and extensibility
+
+---
+
+##  Architecture
+
+```
+          ┌───────────────────────────────┐
+          │         User Query            │
+          └───────────────────────────────┘
+                         │
+                         ▼
+              ┌───────────────────┐
+              │  Retrieval Agent  │
+              │  (Milvus + BGE)   │
+              └───────────────────┘
+                         │ top 30 chunks
+                         ▼
+              ┌───────────────────┐
+              │  Reranker Agent   │
+              │ (Fine-tuned BGE   │
+              │   w/ LoRA head)   │
+              └───────────────────┘
+                         │ top 3 chunks
+                         ▼
+              ┌───────────────────┐
+              │  Answerer Agent   │
+              │ (Mistral-7B or    │
+              │   Phi-3-Mini)     │
+              └───────────────────┘
+                         │
+                         ▼
+          ┌───────────────────────────────┐
+          │  Final Grounded Answer        │
+          │  + Optional Feedback Logging  │
+          └───────────────────────────────┘
+```
+
+---
+
+##  Core Pipeline
+
+### 1️ **Document Chunking** — `chunk_creation.py`
+- Splits base documents (`BaseDocs/*.txt`) into 400-word chunks using spaCy sentence segmentation.
+- Overlapping window ensures context continuity.
+- Outputs: `chunked_documents.csv`
+
+### 2️ **Embedding Generation** — `generate_embeddings.py`
+- Embeds chunks using **BAAI/bge-base-en-v1.5** (E5-style).
+- Normalizes embeddings for **cosine similarity** search.
+- Outputs: `chunk_embeddings_e5.pkl`
+
+### 3️ **Vector Storage & Indexing** — `ingest_to_milvus.py`
+- Inserts embeddings into **Milvus** with **HNSW index (M=16, efConstruction=200)**.
+- Metric: **COSINE**  
+- Collection name: `chunk_embeddings`
+
+### 4️ **Reranker Fine-Tuning** — `fine_tune_bge_reranker_lora.py`
+- Fine-tunes **BGE-Reranker-Base** using **LoRA adapters** and a **regression head**.
+- Task: predict similarity scores (0–5) between queries and chunks.
+- Evaluated with **MSE**, **Spearman correlation**, and **nDCG@3**.
+- Best model saved under: `bge_reranker_lora_sigmoid_best/`
+
+### 5 **Reranking Agent** — `reranker_agent_finetuned.py`
+- Loads LoRA-adapted reranker with saved regression head.
+- Computes **sigmoid(·) × 5** relevance scores for (query, passage) pairs.
+- Returns top-ranked chunks for final generation.
+
+### 6️ **Answer Generation** — `answer_generation.py` / `answerer_agent.py`
+- Uses **Mistral-7B-Instruct** *(or lightweight Phi-3-Mini)* to craft concise, grounded answers.
+- Context: top-k reranked chunks.
+- Output: 1–2 sentence answer covering key return conditions.
+
+### 7️ **Pipeline Orchestration** — `main_agent.py`
+- Orchestrates:
+  ```
+  RetrievalAgent → RerankerAgentFineTuned → AnswererAgent
+  ```
+- Optional user feedback (`1–5`) logged to `feedback_log.csv`.
+- CLI interface for easy testing.
+
+---
+
+##  Multi-Agent Design
+
+| **Agent** | **Role** | **Core File** |
+|------------|-----------|----------------|
+|  Retrieval Agent | Fetches top-K candidates from Milvus (HNSW) | `retrieval_agent.py` |
+|  Reranker Agent | Scores each candidate using fine-tuned BGE cross-encoder | `reranker_agent_finetuned.py` |
+|  Answerer Agent | Generates final concise answers grounded in top chunks | `answerer_agent.py` |
+|  Main Agent | Orchestrates all sub-agents and handles feedback loop | `main_agent.py` |
+
+---
+
+##  Tech Stack
+
+| Category | Tools / Models |
+|-----------|----------------|
+| **Embeddings** | `BAAI/bge-base-en-v1.5` |
+| **Vector DB** | Milvus (HNSW index, COSINE metric) |
+| **Reranker** | `BAAI/bge-reranker-base` + LoRA fine-tuning |
+| **LLM for Answering** | `mistralai/Mistral-7B-Instruct-v0.2` or `microsoft/Phi-3-Mini-4K-Instruct` |
+| **Training Framework** | PyTorch, PEFT (LoRA), Transformers |
+| **Pipeline Agents** | Modular classes for retrieval, reranking, and answering |
+| **Monitoring** | Feedback logs (`feedback_log.csv`) for future retraining |
+| **Environment** | Docker + Milvus + CUDA-enabled GPU |
+
+---
+
+##  Run Locally
+
+### 1️ Start Milvus (Standalone)
+```bash
+docker pull milvusdb/milvus:v2.4.0
+bash standalone.bat   # or ./standalone.sh
+```
+
+### 2️ Prepare Documents
+Put your `.txt` files in `BaseDocs/`, then run:
+```bash
+python chunk_creation.py
+python generate_embeddings.py
+python ingest_to_milvus.py
+```
+
+### 3️ (Optional) Fine-Tune the Reranker
+```bash
+python fine_tune_bge_reranker_lora.py
+```
+
+### 4️ Run Full Pipeline
+```bash
+python main_agent.py --query "Can I return engraved items?" --top_k 3
+```
+
+You’ll see:
+- Retrieved + reranked chunks
+- Generated answer
+- Option to rate response (1–5)
+
+---
+
+##  Example Output
 
 **Query:**  
-> *“Can you explain original payment method for refund?”*  
+> *“Can you explain original payment method for refund?”*
 
 **Top Reranked Chunks:**  
-```
-Rank #1 | Rerank 4.62 | "Refunds will be issued to the original payment method..."
-Rank #2 | Rerank 3.25 | "Store credit will be offered if payment card is unavailable..."
-Rank #3 | Rerank 2.91 | "Refund timelines vary between 5–7 days after inspection..."
-```
+1. Refunds are issued to the original payment method within 5–7 days.  
+2. Store credit applies only when the original payment method is unavailable.  
+3. Cash refunds are not supported for online purchases.
 
 **Final Answer:**  
-> Refunds are issued back to your original payment method within 5–7 business days. If the card is unavailable, store credit will be provided.
+>  *Refunds are processed back to your original payment method within 5–7 business days after inspection.*
+
+**Feedback:**  
+>  Rated “5 – Excellent” → Logged in `feedback_log.csv`
 
 ---
 
-## 🛠️ Roadmap  
+##  Why This Project Matters
 
-- [x] Modular **multi-agent refactor**  
-- [x] Feedback loop logging  
-- [ ] Add **LangChain/LangGraph integration**  
-- [ ] Hybrid retrieval (sparse + dense)  
-- [ ] Conversational memory for multi-turn queries  
-- [ ] Deployment via **FastAPI / Streamlit / Hugging Face Spaces**  
-
----
-
-## Contributing  
-
-Contributions are welcome! Open issues, suggest improvements, or try integrating new retrievers/rerankers.  
+- Demonstrates **end-to-end RAG orchestration** with real models (BGE, Mistral).
+- Implements **retrieval + reranking + generation** just like industrial **search/recommendation** systems.
+- Uses **fine-tuned LoRA regression reranker**, not just out-of-the-box scoring.
+- Provides a **scalable, modular agent architecture** ready for LangChain / LangGraph integration.
+- Collects user feedback for **continual model improvement**.
 
 ---
 
-## License  
+##  Future Enhancements
 
-MIT License.  
+-  **Feedback-based retraining loop**
+-  **LangGraph orchestration** for parallel agent reasoning
+-  **Hybrid search** (BM25 + Vector)
+-  **Conversational memory** and follow-up query handling
+-  **Streamlit / FastAPI deployment**
+-  **Prometheus / Evidently AI monitoring**
+
+---
+
+## 👨 Author
+
+**Tarun Verma**  
+Machine Learning Engineer — specialized in real-time RAG, ranking, and LLM deployment pipelines.  
+ Toronto / Windsor, Canada  
+ [tarunverma.ml@gmail.com](mailto:tarunverma.ml@gmail.com)  
+ [LinkedIn](https://linkedin.com/in/tarunv-ai) | [GitHub](https://github.com/tarunv-ai)
